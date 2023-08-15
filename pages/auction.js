@@ -9,23 +9,25 @@ import { getAssociatedTokenAddressSync,getAccount ,getMint,NATIVE_MINT} from "@s
 import { TOKEN_PROGRAM_ID } from '@project-serum/anchor/dist/cjs/utils/token';
 import { BN } from "@project-serum/anchor"
 import { setComputeUnitLimit } from "@metaplex-foundation/mpl-essentials"
-export const Auction_house= ({ onClusterChange }) => {
+export const Auction_house_pnft = ({ onClusterChange }) => {
+
     const wallet = useWallet();
     const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
-    const metaplex = new Metaplex(connection); 
-    let mindId = new PublicKey('39on12Uw9AqbkxoxRonq2Zy2DcdZqYJ1UBg5Kw3RzQi2')
+    const metaplex = new Metaplex(connection);
+    metaplex.use(walletAdapterIdentity(wallet));// keypairIdentity無法完成以下所有操作，需改成walletAdapterIdentity
+
     let TOKEN_METADATA_PROGRAM_ID = new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s')
     let TOKEN_AUTH_RULES_ID = new PublicKey('auth9SigNpDKz4sJJ1DfCTuZrZNSAgh9sFD3rboVmgg');
     let AUTH_RULES = new PublicKey("eBJLFYPxJmMGKuFwpDWkzxZeUrad92kZRC5BJLpzyT9")
     
-    let bid_receipt = new PublicKey("3EEc73M8RxY8T5oSb5UQDAJerVb1mUBbPf947mErDDBL")
-    let list_receipt = new PublicKey("J2FykeLjbfpirnahtYpE44XGb3uqTHGVEoFswtTkQLq9")
-
     let auctionHouse = metaplex
       .auctionHouse()
       .findByAddress({ address: new PublicKey("DYJGVipuxyXpJoPqzFLq44e5xJWRzao6qu12TTioAMWq") });
     let seller = new PublicKey('F4rMWNogrJ7bsknYCKEkDiRbTS9voM7gKU2rcTDwzuwf')
     let buyer = new PublicKey('Se9gzT3Ep3E452LPyYaWKYqcCvsAwtHhRQwQvmoXFxG')
+    let mindId = new PublicKey('39on12Uw9AqbkxoxRonq2Zy2DcdZqYJ1UBg5Kw3RzQi2')
+    let bid_receipt = new PublicKey("3EEc73M8RxY8T5oSb5UQDAJerVb1mUBbPf947mErDDBL")
+    let list_receipt = new PublicKey("J2FykeLjbfpirnahtYpE44XGb3uqTHGVEoFswtTkQLq9")
 
     let masterEdition = PublicKey.findProgramAddressSync(
       [
@@ -36,6 +38,7 @@ export const Auction_house= ({ onClusterChange }) => {
       ],
       TOKEN_METADATA_PROGRAM_ID
     )[0];
+
     let [metadata,metadata_bump] = PublicKey.findProgramAddressSync(
       [
         Buffer.from('metadata'),
@@ -44,92 +47,16 @@ export const Auction_house= ({ onClusterChange }) => {
       ],
       TOKEN_METADATA_PROGRAM_ID,
     );
+
     let [signer, signerBump] = PublicKey.findProgramAddressSync(
       [Buffer.from('auction_house'), Buffer.from('signer')],
       new PublicKey(PROGRAM_ADDRESS),
     );
 
-    metaplex.use(walletAdapterIdentity(wallet));// keypairIdentity無法完成以下所有操作，需改成walletAdapterIdentity
-
     const checkEligibility = async () => {
 
     };
-    
-  const Auction_setting = async () => {
-      (async () => {
-        const auth = metaplex.identity().publicKey.toString()
-        const auctionHouseSettings = {
-            authority: auth,//management
-            //treasuryMint: myCustomToken,
-            sellerFeeBasisPoints: 150,
-            auctionHouseFeeAccount: auth,//手續費
-            auctionHouseTreasury: auth , //市場版稅
-            feeWithdrawalDestination: auth,//可以從fee唱戶提取資金的帳戶
-            treasuryWithdrawalDestination: auth,//可以從treasury賬戶提取資金的帳戶
-            requireSignOff: true,//listing , bidding 等等的都將會由authority簽署
-            canChangeSalePrice: true,
-            // hasAuctioneer: false,
-            // auctioneerAuthority: auth,
-            // auctioneerScopes: [
-            //     AuthorityScope.Buy,
-            //     AuthorityScope.Sell,
-            //     AuthorityScope.ExecuteSale,
-            // ]
-        };
-        const auctionHouse = await metaplex
-        .auctionHouse()
-        .create({
-          auctionHouseSettings
-        });
-        // FRV7oL9iBQdYR4kJWS1S1BeDEmWcNrD88NVDJwniRVqr
 
-        // const auctionHouse = await metaplex
-        //   .auctionHouse()
-        //   .findByAddress({ address: new PublicKey("FRV7oL9iBQdYR4kJWS1S1BeDEmWcNrD88NVDJwniRVqr") });
-        console.log(auctionHouse)
-      })();
-  }
-  const auctionhouse_update = async () => {
-    (async () => {
-      const mysecret = bs58.decode("Bhao6w2hvn5LtBgJ6nAno3qTy6WMyn59k7sdbFdJVsRapumSJfF86hZ1wcWJ6SxuEhuJUwC2DoNu5YTA9DyMFSy")
-    const auth = Keypair.fromSecretKey(mysecret)
-      // const auctionHouse = await metaplex
-      //   .auctionHouse()
-      //   .findByAddress({ address: new PublicKey("FRV7oL9iBQdYR4kJWS1S1BeDEmWcNrD88NVDJwniRVqr") });
-      const auctionHouse = await metaplex.auctionHouse().findByCreatorAndMint({
-        creator:new PublicKey("F4rMWNogrJ7bsknYCKEkDiRbTS9voM7gKU2rcTDwzuwf"),
-        //creator:metaplex.identity().publicKey,
-        treasuryMint: new PublicKey("So11111111111111111111111111111111111111112"),
-        auctioneerAuthority : new PublicKey("38xYvEUfiEH6hKqtJ4xVCkGg18nsDDTSi8pkW5GbM628")
-      })
-      console.log(auctionHouse.isNative)
-
-      const updatedAuctionHouse = await metaplex
-        .auctionHouse()
-        .update({
-            auctionHouse:auctionHouse,
-            //authority: metaplex.identity(),
-            authority:auth,
-            sellerFeeBasisPoints: 100,
-            requiresSignOff: false,
-            canChangeSalePrice: false,
-            newAuthority: metaplex.identity().publicKey.toString() ,
-            //feeWithdrawalDestination:new PublicKey("38xYvEUfiEH6hKqtJ4xVCkGg18nsDDTSi8pkW5GbM628"),
-            //treasuryWithdrawalDestinationOwner:new PublicKey("38xYvEUfiEH6hKqtJ4xVCkGg18nsDDTSi8pkW5GbM628"),
-            // auctioneerAuthority: new PublicKey("38xYvEUfiEH6hKqtJ4xVCkGg18nsDDTSi8pkW5GbM628"),
-            // auctioneerScopes: [
-            //   AuthorityScope.Deposit,
-            //   AuthorityScope.Buy,
-            //   AuthorityScope.PublicBuy,
-            //   AuthorityScope.ExecuteSale,
-            //   AuthorityScope.Sell,
-            //   AuthorityScope.Cancel,
-            //   AuthorityScope.Withdraw,
-            // ]
-        });
-      console.log(updatedAuctionHouse)
-  })();
-  }
   const Item_list = async () => {
     (async () => {
       auctionHouse = await auctionHouse
@@ -336,6 +263,7 @@ export const Auction_house= ({ onClusterChange }) => {
     (async () => {
 
       auctionHouse = await auctionHouse
+
       const listing = await metaplex.auctionHouse().findListingByReceipt({
         auctionHouse: auctionHouse,
         receiptAddress: list_receipt
@@ -383,13 +311,13 @@ export const Auction_house= ({ onClusterChange }) => {
       )
 
       const purchase = await metaplex
-      .auctionHouse().builders()
-      .executeSale({
-        auctionHouse: auctionHouse,
-        bid: bid,
-        listing: listing,
-        printReceipt: true,
-        bookkeeper: metaplex.identity(),
+        .auctionHouse().builders()
+        .executeSale({
+          auctionHouse: auctionHouse,
+          bid: bid,
+          listing: listing,
+          printReceipt: true,
+          bookkeeper: metaplex.identity(),
       })
       for(const i of execute_remain.keys){
         purchase.records[0].instruction.keys.push(i)
@@ -466,13 +394,102 @@ export const Auction_house= ({ onClusterChange }) => {
         directBuyResponse.records[2].instruction.keys.push(i)
       }
 
-      directBuyResponse.records.splice(1,1)
-      directBuyResponse.records.splice(2,1)
+      directBuyResponse.records.splice(3,1)
 
-      console.log(directBuyResponse)
+      console.log(bid.price.basisPoints.toString())
+      console.log(listing.price.basisPoints.toString())
       directBuyResponse.sendAndConfirm(metaplex,{skipPreflight:false})
 
   })();
+  }
+  const buy_old = async () => {
+    //the code is to change the execute in buy
+
+    auctionHouse = await auctionHouse
+    
+    const listing = await metaplex.auctionHouse().findListingByReceipt({
+      auctionHouse: auctionHouse,
+      receiptAddress: list_receipt
+    });
+
+    // for remaining account token record
+    const associatedAddress = await getAssociatedTokenAddressSync(mindId,seller)
+    const des_associatedAddress = await getAssociatedTokenAddressSync(mindId,buyer)
+
+    const owner_tokenRecord = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from('metadata'),
+        TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+        mindId.toBuffer(),
+        Buffer.from('token_record'),
+        associatedAddress.toBuffer(),
+      ],
+      TOKEN_METADATA_PROGRAM_ID
+    )[0];
+    const des_tokenRecord = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from('metadata'),
+        TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+        mindId.toBuffer(),
+        Buffer.from('token_record'),
+        des_associatedAddress.toBuffer(),
+      ],
+      TOKEN_METADATA_PROGRAM_ID
+    )[0];
+    
+    const execute_remain = createExecuteSaleRemainingAccountsInstruction(
+      {
+        metadataProgram: TOKEN_METADATA_PROGRAM_ID,
+        edition: masterEdition,
+        ownerTr: owner_tokenRecord,
+        destinationTr: des_tokenRecord,
+        authRulesProgram: TOKEN_AUTH_RULES_ID,
+        authRules: AUTH_RULES,
+        sysvarInstructions: SYSVAR_INSTRUCTIONS_PUBKEY,
+      }
+    )
+
+    const bid_ix= await metaplex
+    .auctionHouse().builders()
+    .bid({
+        auctionHouse:auctionHouse, 
+        seller: seller,  
+        buy : metaplex.identity(),
+        authority: auctionHouse.authorityAddress,
+        printReceipt:true,
+        mintAccount: mindId,                     
+        price:lamports(listing.price.basisPoints.toString()),
+        bookkeeper: metaplex.identity()   
+    });
+    bid_ix.records.splice(1,1)
+
+    const direct_bid = await metaplex
+      .auctionHouse()
+      .findBids({ auctionHouse, buyer, metadata , mindId});
+    const bid_to_receipt = await metaplex.auctionHouse().findBidByReceipt({
+      auctionHouse: auctionHouse,
+      receiptAddress: direct_bid[0].receiptAddress
+    });
+
+    const purchase_ix = await metaplex
+      .auctionHouse().builders()
+      .executeSale({
+        auctionHouse: auctionHouse,
+        bid: bid_to_receipt,
+        listing: listing,
+        printReceipt: true,
+        bookkeeper: metaplex.identity(),
+    })
+
+    for(const i of execute_remain.keys){
+      purchase_ix.records[0].instruction.keys.push(i)
+    }
+    purchase_ix.records[0].instruction.keys[4].isWritable = true
+
+    bid_ix.records.push(purchase_ix.records[0])
+
+    console.log(bid_ix)
+    bid_ix.sendAndConfirm(metaplex)
   }
   const sell = async () => {
     (async () => {
@@ -580,10 +597,10 @@ export const Auction_house= ({ onClusterChange }) => {
       //remove receipt
       directSellResponse.records.splice(1,1)
       directSellResponse.records.splice(2,1)
+
       console.log(directSellResponse)
       directSellResponse.sendAndConfirm(metaplex,{skipPreflight:false})
 
-      console.log(directSellResponse)
       
   })();
   }
@@ -670,9 +687,14 @@ export const Auction_house= ({ onClusterChange }) => {
       auctionHouse: auctionHouse,
       receiptAddress: bid_receipt
     });
+    const listing = await metaplex.auctionHouse().findListingByReceipt({
+      auctionHouse: auctionHouse,
+      receiptAddress: list_receipt
+    });
+
     const bids = await metaplex
       .auctionHouse()
-      .findBids({ auctionHouse, metadata });
+      .findBids({ auctionHouse, buyer, metadata ,mindId});
     const listings = await metaplex
       .auctionHouse()
       .findListings({ auctionHouse, seller, metadata });
@@ -680,8 +702,8 @@ export const Auction_house= ({ onClusterChange }) => {
     const ata = getAssociatedTokenAddressSync(mindId, seller);
     const nft = await getAccount(connection,ata)
 
-    console.log('bid :',bid)
-    console.log('list :',listings[0])
+    console.log(bid.price.basisPoints.toString())
+    console.log(listing.price.basisPoints.toString())
 
   }
 

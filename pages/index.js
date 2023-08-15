@@ -19,7 +19,8 @@ import { clusterApiUrl } from "@solana/web3.js";
 import { MetaplexProvider } from "./MetaplexProvider";
 import "@solana/wallet-adapter-react-ui/styles.css";
 import dynamic from 'next/dynamic';
-import { Auction_house } from './auction'
+import { Auction_house_pnft } from './auction'
+import { Auction_house_nft } from './auction_nft'
 // import { For_finding } from './find'
 // import { Show_NFT } from "./show_nft"
 // import { Show_for_buy } from "./Show_AH_nfts"
@@ -69,7 +70,8 @@ export default function Home() {
             <MetaplexProvider>
               <div className={styles.App}>
                 <ButtonWrapper />
-                <Auction_house onClusterChange={handleChange} />
+                <Auction_house_pnft onClusterChange={handleChange} />
+                <Auction_house_nft onClusterChange={handleChange} />
                 {/* <For_finding onClusterChange={handleChange} /> */}
                 {/* <Show_for_buy onClusterChange={handleChange} /> */}
                 {/* <Show_NFT onClusterChange={handleChange} /> */}
