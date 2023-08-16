@@ -1,14 +1,13 @@
 import styles from '../styles/Home.module.css';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { PublicKey, Keypair ,clusterApiUrl, LAMPORTS_PER_SOL, sendAndConfirmRawTransaction} from "@solana/web3.js";
-import { Connection,Transaction,SystemProgram,SYSVAR_INSTRUCTIONS_PUBKEY,SYSVAR_RENT_PUBKEY } from '@solana/web3.js';
+import { Connection,Transaction,SystemProgram,SYSVAR_INSTRUCTIONS_PUBKEY,SYSVAR_RENT_PUBKEY , ComputeBudgetProgram } from '@solana/web3.js';
 import { Metaplex ,  isMetaplexFile,  keypairIdentity,  lamports,toLazyBid,walletAdapterIdentity } from "@metaplex-foundation/js";
-import { createSellRemainingAccountsInstruction , PROGRAM_ADDRESS , createExecuteSaleRemainingAccountsInstruction , createSellInstruction , createCancelRemainingAccountsInstruction, createExecuteSaleInstruction , createPrintListingReceiptInstruction } from "@metaplex-foundation/mpl-auction-house";
+import { createSellRemainingAccountsInstruction , PROGRAM_ADDRESS , createExecuteSaleRemainingAccountsInstruction , createSellInstruction , createCancelRemainingAccountsInstruction, createExecuteSaleInstruction , createPrintListingReceiptInstruction, PROGRAM_ID } from "@metaplex-foundation/mpl-auction-house";
 import bs58 from "bs58";
-import { getAssociatedTokenAddressSync,getAccount ,getMint,NATIVE_MINT} from "@solana/spl-token";
+import { getAssociatedTokenAddressSync, getAccount ,getMint, NATIVE_MINT} from "@solana/spl-token";
 import { TOKEN_PROGRAM_ID } from '@project-serum/anchor/dist/cjs/utils/token';
 import { BN } from "@project-serum/anchor"
-import { setComputeUnitLimit } from "@metaplex-foundation/mpl-essentials"
 export const Auction_house_pnft = ({ onClusterChange }) => {
 
     const wallet = useWallet();
@@ -25,9 +24,9 @@ export const Auction_house_pnft = ({ onClusterChange }) => {
       .findByAddress({ address: new PublicKey("DYJGVipuxyXpJoPqzFLq44e5xJWRzao6qu12TTioAMWq") });
     let seller = new PublicKey('F4rMWNogrJ7bsknYCKEkDiRbTS9voM7gKU2rcTDwzuwf')
     let buyer = new PublicKey('Se9gzT3Ep3E452LPyYaWKYqcCvsAwtHhRQwQvmoXFxG')
-    let mindId = new PublicKey('39on12Uw9AqbkxoxRonq2Zy2DcdZqYJ1UBg5Kw3RzQi2')
-    let bid_receipt = new PublicKey("3EEc73M8RxY8T5oSb5UQDAJerVb1mUBbPf947mErDDBL")
-    let list_receipt = new PublicKey("J2FykeLjbfpirnahtYpE44XGb3uqTHGVEoFswtTkQLq9")
+    let mindId = new PublicKey('5DuEVDgYfLz6Vj7bNwusey4aHEnSEXRQeUQQGY3pASTU')
+    let bid_receipt = new PublicKey("4xH96P7GSLD4RUpQUXCF1qTW9KiywrRLCQhVB9MiHxfk")
+    let list_receipt = new PublicKey("E382V7wyFRG6HfMhjpXrJsut8Wx9so9JZ55MbQrccETz")
 
     let masterEdition = PublicKey.findProgramAddressSync(
       [
@@ -85,14 +84,14 @@ export const Auction_house_pnft = ({ onClusterChange }) => {
       
       const remain_ix = createSellRemainingAccountsInstruction(
         {
-          metadataProgram:TOKEN_METADATA_PROGRAM_ID,
-          delegateRecord:metaplex.auctionHouse().pdas().programAsSigner(),//delegateRecord,
-          tokenRecord:tokenRecord,
-          tokenMint:mindId,
-          edition:masterEdition,
-          authRulesProgram:new PublicKey('auth9SigNpDKz4sJJ1DfCTuZrZNSAgh9sFD3rboVmgg'),
-          authRules:new PublicKey('eBJLFYPxJmMGKuFwpDWkzxZeUrad92kZRC5BJLpzyT9') ,//new PublicKey('AdH2Utn6Fus15ZhtenW4hZBQnvtLgM1YCW2MfVp7pYS5'),
-          sysvarInstructions:SYSVAR_INSTRUCTIONS_PUBKEY,
+          metadataProgram: TOKEN_METADATA_PROGRAM_ID,
+          delegateRecord: delegateRecord,
+          tokenRecord: tokenRecord,
+          tokenMint: mindId,
+          edition: masterEdition,
+          authRulesProgram: TOKEN_AUTH_RULES_ID,
+          authRules: AUTH_RULES,
+          sysvarInstructions: SYSVAR_INSTRUCTIONS_PUBKEY,
         }
       )
 
@@ -218,21 +217,20 @@ export const Auction_house_pnft = ({ onClusterChange }) => {
       //第二種
       const ix = metaplex.auctionHouse().builders()
         .list({
-            auctionHouse:auctionHouse,  
+            auctionHouse: auctionHouse,  
             seller: metaplex.identity(),
             authority: auctionHouse.authorityAddress,
-            bookkeeper:metaplex.identity(),     
+            bookkeeper: metaplex.identity(),     
             mintAccount: mindId,
-            price:lamports(345000000)
+            price: lamports(345000000)
         })
+
       for(const i of remain_ix.keys){
         ix.records[0].instruction.keys.push(i)
       }
       ix.records[0].instruction.keys[2].isWritable = true
       ix.records[0].instruction.keys[10].isWritable = false
 
-      const userAta = await getAccount(connection,ata)
-      console.log(userAta)
       console.log(delegateRecord)
       ix.sendAndConfirm(metaplex)
 
@@ -324,13 +322,15 @@ export const Auction_house_pnft = ({ onClusterChange }) => {
       }
       purchase.records[0].instruction.keys[4].isWritable = true
 
-      await purchase.sendAndConfirm(metaplex)
-      
-      console.log('success')
+      await purchase.sendAndConfirm(metaplex) 
+      // for(const i of purchase.records[0].instruction.keys){
+      //   console.log(i.pubkey.toString())
+      // }
+
   })();
   }
   const buy = async () => {
-    (async () => {
+
       auctionHouse = await auctionHouse
       
       const listing = await metaplex.auctionHouse().findListingByReceipt({
@@ -391,16 +391,18 @@ export const Auction_house_pnft = ({ onClusterChange }) => {
       )
 
       for(const i of execute_remain.keys){
+
+        //add remaining ix to execute sale
         directBuyResponse.records[2].instruction.keys.push(i)
+
       }
 
+      //remove receipt for more compute unit spaces
       directBuyResponse.records.splice(3,1)
 
-      console.log(bid.price.basisPoints.toString())
-      console.log(listing.price.basisPoints.toString())
-      directBuyResponse.sendAndConfirm(metaplex,{skipPreflight:false})
+      console.log(directBuyResponse)
+      //directBuyResponse.sendAndConfirm(metaplex,{skipPreflight:false})
 
-  })();
   }
   const buy_old = async () => {
     //the code is to change the execute in buy
@@ -490,6 +492,180 @@ export const Auction_house_pnft = ({ onClusterChange }) => {
 
     console.log(bid_ix)
     bid_ix.sendAndConfirm(metaplex)
+  }
+  const execute_full_ix = async () => {
+
+    async function getAuctionHouseTradeState( 
+    	auctionHouse, 
+    	wallet, 
+    	tokenAccount, 
+    	treasuryMint, 
+    	tokenMint, 
+    	tokenSize, 
+    	buyPrice 
+  	) { 
+    	return await PublicKey.findProgramAddress( 
+      	[ 
+        	Buffer.from('auction_house'), 
+        	wallet.toBuffer(), 
+        	auctionHouse.toBuffer(), 
+        	tokenAccount.toBuffer(), 
+        	treasuryMint.toBuffer(), 
+        	tokenMint.toBuffer(), 
+        	new BN(buyPrice).toArrayLike(Buffer, "le", 8), 
+        	new BN(tokenSize).toArrayLike(Buffer, "le", 8), 
+      	], 
+      	new PublicKey(PROGRAM_ADDRESS) 
+    ); 
+  }
+
+    auctionHouse = await auctionHouse
+
+    const listing = await metaplex.auctionHouse().findListingByReceipt({
+      auctionHouse: auctionHouse,
+      receiptAddress: list_receipt
+    });
+
+    const associatedAddress = getAssociatedTokenAddressSync(mindId, seller);
+    const buyerAssociatedAccount = getAssociatedTokenAddressSync(mindId, buyer)
+
+    const nft = await metaplex.nfts().findByToken({token: associatedAddress})
+    const creators = [
+      {
+        pubkey: nft.creators[0].address,
+        isWritable: true,
+        isSigner: false
+      },
+      {
+        pubkey: nft.creators[1].address,
+        isWritable: true,
+        isSigner: false
+      }
+    ]
+
+    const owner_tokenRecord = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from('metadata'),
+        TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+        mindId.toBuffer(),
+        Buffer.from('token_record'),
+        associatedAddress.toBuffer(),
+      ],
+      TOKEN_METADATA_PROGRAM_ID
+    )[0];
+    const des_tokenRecord = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from('metadata'),
+        TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+        mindId.toBuffer(),
+        Buffer.from('token_record'),
+        buyerAssociatedAccount.toBuffer(),
+      ],
+      TOKEN_METADATA_PROGRAM_ID
+    )[0];
+
+  	const escrowPaymentAccount = PublicKey.findProgramAddressSync(
+    	[
+        	Buffer.from('auction_house'),
+        	(await auctionHouse).address.toBuffer(),
+        	buyer.toBuffer(),
+    	],
+    	new PublicKey(PROGRAM_ADDRESS)
+  	)
+
+    const buyerTradeState = PublicKey.findProgramAddressSync(
+    	[	Buffer.from('auction_house'), 
+        	buyer.toBuffer(), 
+        	(await auctionHouse).address.toBuffer(), 
+        	associatedAddress.toBuffer(), 
+        	NATIVE_MINT.toBuffer(), 
+        	mindId.toBuffer(), 
+        	new BN(listing.price.basisPoints.toString()).toArrayLike(Buffer, "le", 8), 
+        	new BN(1).toArrayLike(Buffer, "le", 8),
+  		],
+		new PublicKey(PROGRAM_ADDRESS)
+  	)
+
+    const [sellerTradeState, tradeBump] = await getAuctionHouseTradeState( 
+    	(await auctionHouse).address, 
+    	seller, 
+    	associatedAddress, 
+    	NATIVE_MINT, 
+    	mindId, 
+    	1,
+    	listing.price.basisPoints.toString()
+  	);
+
+    const [freeTradeState, freeTradeBump] = await getAuctionHouseTradeState( 
+    	(await auctionHouse).address, 
+    	seller, 
+    	associatedAddress, 
+    	NATIVE_MINT, 
+    	mindId, 
+    	1, 
+    	"0"
+  	);
+
+    const execute_remain = createExecuteSaleRemainingAccountsInstruction(
+      {
+        metadataProgram: TOKEN_METADATA_PROGRAM_ID,
+        edition: masterEdition,
+        ownerTr: owner_tokenRecord,
+        destinationTr: des_tokenRecord,
+        authRulesProgram: TOKEN_AUTH_RULES_ID,
+        authRules: AUTH_RULES,
+        sysvarInstructions: SYSVAR_INSTRUCTIONS_PUBKEY,
+      }
+    )
+
+    const execute_ix = createExecuteSaleInstruction(
+      {
+        buyer: buyer,
+        seller: seller,
+        tokenAccount: associatedAddress,
+        tokenMint: mindId,
+        metadata: metadata,
+        treasuryMint: NATIVE_MINT,
+        escrowPaymentAccount: escrowPaymentAccount[0],
+        sellerPaymentReceiptAccount: seller,
+        buyerReceiptTokenAccount: buyerAssociatedAccount,
+        authority: (await auctionHouse).authorityAddress,
+        auctionHouse: (await auctionHouse).address,
+        auctionHouseFeeAccount: (await auctionHouse).feeAccountAddress,
+        auctionHouseTreasury: (await auctionHouse).treasuryAccountAddress,
+        buyerTradeState: buyerTradeState[0],
+        sellerTradeState: sellerTradeState,
+        freeTradeState: freeTradeState,
+        programAsSigner: signer,
+        anchorRemainingAccounts: creators
+      },
+      {
+        escrowPaymentBump: escrowPaymentAccount[1],
+        freeTradeStateBump: freeTradeBump,
+        programAsSignerBump: signerBump,
+        buyerPrice: listing.price.basisPoints.toString(),
+        tokenSize: 1,
+      }
+    )
+
+    execute_ix.keys[4].isWritable = true
+    for(const i of execute_remain.keys){
+      execute_ix.keys.push(i)
+    }
+
+    let tx = new Transaction();
+    tx.add(execute_ix)
+    tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash
+    tx.feePayer = wallet.publicKey
+    tx.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 300000 }))
+
+    // for(const i of execute_ix.keys){
+    //   console.log(i.pubkey.toString())
+    // }
+
+    metaplex.rpc().sendAndConfirmTransaction(tx,{skipPreflight:false},[metaplex.identity()])
+    console.log(tx)
+
   }
   const sell = async () => {
     (async () => {
