@@ -18,56 +18,79 @@ import { getAssociatedTokenAddressSync, getAccount ,getMint, NATIVE_MINT} from "
 import { BN } from "@project-serum/anchor"
 export const Auction_house_pnft = ({ onClusterChange }) => {
 
-    const wallet = useWallet();
-    const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
-    const metaplex = new Metaplex(connection);
-    metaplex.use(walletAdapterIdentity(wallet));// keypairIdentity無法完成以下所有操作，需改成walletAdapterIdentity
+  const wallet = useWallet();
+  const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
+  const metaplex = new Metaplex(connection);
+  metaplex.use(walletAdapterIdentity(wallet));// keypairIdentity無法完成以下所有操作，需改成walletAdapterIdentity
 
-    let TOKEN_METADATA_PROGRAM_ID = new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s')
-    let TOKEN_AUTH_RULES_ID = new PublicKey('auth9SigNpDKz4sJJ1DfCTuZrZNSAgh9sFD3rboVmgg');
-    let AUTH_RULES = new PublicKey("eBJLFYPxJmMGKuFwpDWkzxZeUrad92kZRC5BJLpzyT9")
-    
-    let auctionHouse = metaplex
-      .auctionHouse()
-      .findByAddress({ address: new PublicKey("DYJGVipuxyXpJoPqzFLq44e5xJWRzao6qu12TTioAMWq") });
-    let bs = bs58.decode("Bhao6w2hvn5LtBgJ6nAno3qTy6WMyn59k7sdbFdJVsRapumSJfF86hZ1wcWJ6SxuEhuJUwC2DoNu5YTA9DyMFSy");
-    let ah_auth_wallet = Keypair.fromSecretKey(bs);
+  let TOKEN_METADATA_PROGRAM_ID = new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s')
+  let TOKEN_AUTH_RULES_ID = new PublicKey('auth9SigNpDKz4sJJ1DfCTuZrZNSAgh9sFD3rboVmgg');
+  let AUTH_RULES = new PublicKey("eBJLFYPxJmMGKuFwpDWkzxZeUrad92kZRC5BJLpzyT9")
+  
+  let auctionHouse = metaplex
+    .auctionHouse()
+    .findByAddress({ address: new PublicKey("DYJGVipuxyXpJoPqzFLq44e5xJWRzao6qu12TTioAMWq") });
+  let bs = bs58.decode("Bhao6w2hvn5LtBgJ6nAno3qTy6WMyn59k7sdbFdJVsRapumSJfF86hZ1wcWJ6SxuEhuJUwC2DoNu5YTA9DyMFSy");
+  let ah_auth_wallet = Keypair.fromSecretKey(bs);
 
-    let seller = new PublicKey('F4rMWNogrJ7bsknYCKEkDiRbTS9voM7gKU2rcTDwzuwf')
-    let buyer = new PublicKey('Se9gzT3Ep3E452LPyYaWKYqcCvsAwtHhRQwQvmoXFxG')
-    let mindId = new PublicKey('HqKspAPxwpPVyMeSP4885ywwJqV7mAdGjqC9eC6P4wC1')
-    let bid_receipt = new PublicKey("AJTQAqchxGw8KWta9npk6bMDtnswAusscV3vLfBrCpGC")
-    let list_receipt = new PublicKey("7X2XFwq89u9ZUV4h3prz38rTyVK9FKMp9Rj4SVZQBf7X")
+  let seller = new PublicKey('2JeNLSrJkSaWoFoSQkb1YsxC1dXSaA1LTLjpakzb9SBf')
+  let mindId = new PublicKey('581f7Zyka6JyTLQTWr7qK81r5Rq4Y35E363kLihEiw2E')
+  let bid_receipt = new PublicKey("AJTQAqchxGw8KWta9npk6bMDtnswAusscV3vLfBrCpGC")
+  let list_receipt = new PublicKey("7X2XFwq89u9ZUV4h3prz38rTyVK9FKMp9Rj4SVZQBf7X")
 
-    let masterEdition = PublicKey.findProgramAddressSync(
-      [
-        Buffer.from('metadata'),
-        TOKEN_METADATA_PROGRAM_ID.toBuffer(),
-        mindId.toBuffer(),
-        Buffer.from('edition'),
-      ],
-      TOKEN_METADATA_PROGRAM_ID
-    )[0];
+  async function getAuctionHouseTradeState( 
+    auctionHouse, 
+    wallet, 
+    tokenAccount, 
+    treasuryMint, 
+    tokenMint, 
+    tokenSize, 
+    buyPrice 
+  ) { 
+    return await PublicKey.findProgramAddress( 
+      [ 
+        Buffer.from('auction_house'), 
+        wallet.toBuffer(), 
+        auctionHouse.toBuffer(), 
+        tokenAccount.toBuffer(), 
+        treasuryMint.toBuffer(), 
+        tokenMint.toBuffer(), 
+        new BN(buyPrice).toArrayLike(Buffer, "le", 8), 
+        new BN(tokenSize).toArrayLike(Buffer, "le", 8), 
+      ], 
+      new PublicKey(PROGRAM_ADDRESS) 
+  ); 
+  }
 
-    let [metadata,metadata_bump] = PublicKey.findProgramAddressSync(
-      [
-        Buffer.from('metadata'),
-        TOKEN_METADATA_PROGRAM_ID.toBuffer(),
-        mindId.toBuffer(),
-      ],
-      TOKEN_METADATA_PROGRAM_ID,
-    );
+  let masterEdition = PublicKey.findProgramAddressSync(
+    [
+      Buffer.from('metadata'),
+      TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+      mindId.toBuffer(),
+      Buffer.from('edition'),
+    ],
+    TOKEN_METADATA_PROGRAM_ID
+  )[0];
 
-    let [signer, signerBump] = PublicKey.findProgramAddressSync(
-      [Buffer.from('auction_house'), Buffer.from('signer')],
-      new PublicKey(PROGRAM_ADDRESS),
-    );
+  let [metadata,metadata_bump] = PublicKey.findProgramAddressSync(
+    [
+      Buffer.from('metadata'),
+      TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+      mindId.toBuffer(),
+    ],
+    TOKEN_METADATA_PROGRAM_ID,
+  );
 
-    const checkEligibility = async () => {
-    };
+  let [signer, signerBump] = PublicKey.findProgramAddressSync(
+    [Buffer.from('auction_house'), Buffer.from('signer')],
+    new PublicKey(PROGRAM_ADDRESS),
+  );
+
+  const checkEligibility = async () => {
+  };
 
   const Item_list = async () => {
-    (async () => {
+
       auctionHouse = await auctionHouse
 
       const ata = getAssociatedTokenAddressSync(mindId, wallet.publicKey);
@@ -81,6 +104,7 @@ export const Auction_house_pnft = ({ onClusterChange }) => {
         ],
         TOKEN_METADATA_PROGRAM_ID
       )[0];
+
       const delegateRecord = PublicKey.findProgramAddressSync(
         [
           Buffer.from('metadata'),
@@ -244,10 +268,9 @@ export const Auction_house_pnft = ({ onClusterChange }) => {
       console.log(delegateRecord)
       ix.sendAndConfirm(metaplex)
 
-  })();
   }
   const Item_bid = async () => {
-    (async () => {
+
       auctionHouse = await auctionHouse
 
       const bid = await metaplex
@@ -265,33 +288,9 @@ export const Auction_house_pnft = ({ onClusterChange }) => {
 
         console.log(bid)
       console.log('success')
-  })();
+
   }
   const buy_full_ix = async () => {
-
-    async function getAuctionHouseTradeState( 
-    	auctionHouse, 
-    	wallet, 
-    	tokenAccount, 
-    	treasuryMint, 
-    	tokenMint, 
-    	tokenSize, 
-    	buyPrice 
-  	) { 
-    	return await PublicKey.findProgramAddress( 
-      	[ 
-        	Buffer.from('auction_house'), 
-        	wallet.toBuffer(), 
-        	auctionHouse.toBuffer(), 
-        	tokenAccount.toBuffer(), 
-        	treasuryMint.toBuffer(), 
-        	tokenMint.toBuffer(), 
-        	new BN(buyPrice).toArrayLike(Buffer, "le", 8), 
-        	new BN(tokenSize).toArrayLike(Buffer, "le", 8), 
-      	], 
-      	new PublicKey(PROGRAM_ADDRESS) 
-    ); 
-    }
 
     auctionHouse = await auctionHouse
 
@@ -483,30 +482,7 @@ export const Auction_house_pnft = ({ onClusterChange }) => {
   }
   const execute_full_ix = async () => {
 
-    async function getAuctionHouseTradeState( 
-    	auctionHouse, 
-    	wallet, 
-    	tokenAccount, 
-    	treasuryMint, 
-    	tokenMint, 
-    	tokenSize, 
-    	buyPrice 
-  	) { 
-    	return await PublicKey.findProgramAddress( 
-      	[ 
-        	Buffer.from('auction_house'), 
-        	wallet.toBuffer(), 
-        	auctionHouse.toBuffer(), 
-        	tokenAccount.toBuffer(), 
-        	treasuryMint.toBuffer(), 
-        	tokenMint.toBuffer(), 
-        	new BN(buyPrice).toArrayLike(Buffer, "le", 8), 
-        	new BN(tokenSize).toArrayLike(Buffer, "le", 8), 
-      	], 
-      	new PublicKey(PROGRAM_ADDRESS) 
-    ); 
-    }
-
+    const buyer = metaplex.identity().publicKey
     auctionHouse = await auctionHouse
 
     const listing = await metaplex.auctionHouse().findListingByReceipt({
@@ -792,6 +768,7 @@ export const Auction_house_pnft = ({ onClusterChange }) => {
         ],
         TOKEN_METADATA_PROGRAM_ID
     )[0];
+
     const masterEdition = PublicKey.findProgramAddressSync(
         [
             Buffer.from('metadata'),
@@ -801,6 +778,7 @@ export const Auction_house_pnft = ({ onClusterChange }) => {
         ],
         TOKEN_METADATA_PROGRAM_ID
     )[0];
+
     const dr = PublicKey.findProgramAddressSync(
         [
             Buffer.from('metadata'),
@@ -811,6 +789,7 @@ export const Auction_house_pnft = ({ onClusterChange }) => {
         ],
         TOKEN_METADATA_PROGRAM_ID
     )[0];
+
     const metadata = PublicKey.findProgramAddressSync(
         [
             Buffer.from('metadata'),
@@ -873,11 +852,11 @@ export const Auction_house_pnft = ({ onClusterChange }) => {
 
   }
 
-    if (!wallet.connected) {
-        return null;
-    }else {
-        checkEligibility();
-    }
+  if (!wallet.connected) {
+      return null;
+  }else {
+      checkEligibility();
+  }
 
   return (
     <div>

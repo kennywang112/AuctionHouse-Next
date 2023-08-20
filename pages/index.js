@@ -16,11 +16,11 @@ import {
   WalletModalProvider,
 } from "@solana/wallet-adapter-react-ui";
 import { clusterApiUrl } from "@solana/web3.js";
-import { MetaplexProvider } from "./MetaplexProvider";
 import "@solana/wallet-adapter-react-ui/styles.css";
 import dynamic from 'next/dynamic';
 import { Auction_house_pnft } from './auction'
 import { Auction_house_nft } from './auction_nft'
+import { Show_Listing } from './ShowListing'
 export default function Home() {
  
   const [network, setNetwork] = useState(WalletAdapterNetwork.Devnet);
@@ -64,13 +64,11 @@ export default function Home() {
       <ConnectionProvider endpoint={endpoint}>
         <WalletProvider wallets={wallets} autoConnect>
           <WalletModalProvider>
-            <MetaplexProvider>
               <div className={styles.App}>
                 <ButtonWrapper />
                 <Auction_house_pnft onClusterChange={handleChange} />
-                {/* <Auction_house_nft onClusterChange={handleChange} /> */}
+                <Show_Listing onClusterChange={handleChange} />
               </div>
-            </MetaplexProvider>
           </WalletModalProvider>
         </WalletProvider>
       </ConnectionProvider>
