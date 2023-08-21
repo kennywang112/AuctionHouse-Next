@@ -21,6 +21,7 @@ import dynamic from 'next/dynamic';
 import { Auction_house_pnft } from './auction'
 import { Auction_house_nft } from './auction_nft'
 import { Show_Listing } from './ShowListing'
+import { Full_function } from './FunctionTest'
 export default function Home() {
  
   const [network, setNetwork] = useState(WalletAdapterNetwork.Devnet);
@@ -66,8 +67,9 @@ export default function Home() {
           <WalletModalProvider>
               <div className={styles.App}>
                 <ButtonWrapper />
-                <Auction_house_pnft onClusterChange={handleChange} />
-                <Show_Listing onClusterChange={handleChange} />
+                {/* <Auction_house_pnft onClusterChange={handleChange} /> */}
+                {/* <Show_Listing onClusterChange={handleChange} /> */}
+                <Full_function onClusterChange={handleChange} />
               </div>
           </WalletModalProvider>
         </WalletProvider>

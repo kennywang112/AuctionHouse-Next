@@ -15,6 +15,7 @@ export const Show_Listing = ({ onClusterChange }) => {
     const wallet = useWallet();
     const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
     const metaplex = new Metaplex(connection);
+    metaplex.use(walletAdapterIdentity(wallet))
 
     let bs = bs58.decode("Bhao6w2hvn5LtBgJ6nAno3qTy6WMyn59k7sdbFdJVsRapumSJfF86hZ1wcWJ6SxuEhuJUwC2DoNu5YTA9DyMFSy");
     let ah_auth_wallet = Keypair.fromSecretKey(bs);
@@ -23,6 +24,8 @@ export const Show_Listing = ({ onClusterChange }) => {
     let listing_info = []
     let nfts_info = [];
     let delegate = [];
+
+    let mintid = new PublicKey('GZYc7jbNtNNsnaEH5xt9XFTxyLpJtQF1nyDhvqZDTER8')
 
     const checkEligibility = async () => {
     };
@@ -56,30 +59,6 @@ export const Show_Listing = ({ onClusterChange }) => {
         console.log(listing_info)
     }
 
-    const doList = async (nftIndex) => {
-
-        try {
-
-            const ix = await List(nftIndex.address,wallet,metaplex,0.2*1000000000)
-            const receipt_ix = await Print_list_receipt(nftIndex.address,wallet,metaplex,0.2*1000000000)
-
-            let tx = new Transaction();
-            tx.add(ix).add(receipt_ix)
-            tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash
-
-            tx.feePayer = feepayer_value
-
-            metaplex.rpc().sendAndConfirmTransaction(tx, {skipPreflight:false}, [metaplex.identity()])
-
-            console.log(tx)
-
-        } catch(error) {
-
-            console.log(error)
-
-        }
-    }
-
     const find_nft = async () => {
 
         const all_nfts = await metaplex.nfts().findAllByOwner({owner: wallet.publicKey})
@@ -106,6 +85,20 @@ export const Show_Listing = ({ onClusterChange }) => {
         setNftImages(images);
 
         console.log(images)
+    }
+
+    const doList = async () => {
+
+        const ix = await List(mintid,wallet,metaplex,0.2*1000000000)
+        const receipt_ix = await Print_list_receipt(mintid,wallet,metaplex,0.2*1000000000)
+
+        let tx = new Transaction();
+        tx.add(ix).add(receipt_ix)
+        tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash
+
+        metaplex.rpc().sendAndConfirmTransaction(tx, {skipPreflight:false}, [metaplex.identity()])
+
+        console.log(tx)
     }
 
     if (!wallet.connected) {
@@ -144,6 +137,11 @@ export const Show_Listing = ({ onClusterChange }) => {
                     }
                 `}
             </style>
+            <div className={styles.container}>
+                <div className={styles.nftForm}>
+                    <button onClick={doList}>list</button>
+                </div>
+            </div>
         </div>
     );
 }
