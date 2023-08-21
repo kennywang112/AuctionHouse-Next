@@ -1,8 +1,22 @@
 
 import { useWallet } from '@solana/wallet-adapter-react';
 import { PublicKey, Keypair ,clusterApiUrl } from "@solana/web3.js";
-import { Connection, Transaction,SystemProgram, SYSVAR_INSTRUCTIONS_PUBKEY,SYSVAR_RENT_PUBKEY , ComputeBudgetProgram } from '@solana/web3.js';
-import { Metaplex ,  isMetaplexFile,  keypairIdentity,  lamports, toLazyBid, walletAdapterIdentity } from "@metaplex-foundation/js";
+import { 
+    Connection, 
+    Transaction,
+    SystemProgram, 
+    SYSVAR_INSTRUCTIONS_PUBKEY,
+    SYSVAR_RENT_PUBKEY, 
+    ComputeBudgetProgram 
+} from '@solana/web3.js';
+import { 
+    Metaplex,  
+    isMetaplexFile,  
+    keypairIdentity,  
+    lamports, 
+    toLazyBid, 
+    walletAdapterIdentity 
+} from "@metaplex-foundation/js";
 import { 
   createSellRemainingAccountsInstruction, 
   PROGRAM_ADDRESS, 
@@ -12,7 +26,10 @@ import {
   createExecuteSaleInstruction, 
   createPrintBidReceiptInstruction,
   createBuyInstruction,
-  createPrintListingReceiptInstruction
+  createPrintListingReceiptInstruction,
+  createPrintPurchaseReceiptInstruction,
+  createCancelBidReceiptInstruction,
+  createCancelListingReceiptInstruction
   } from "@metaplex-foundation/mpl-auction-house";
 import bs58 from "bs58";
 import { getAssociatedTokenAddressSync, getAccount ,getMint, NATIVE_MINT } from "@solana/spl-token";
@@ -76,7 +93,7 @@ export const List = async (mindId, wallet, metaplex, list_price) => {
     .auctionHouse()
     .findByAddress({ address: Auction_House });
 
-    const ata = getAssociatedTokenAddressSync(mindId, wallet.publicKey.value);
+    const ata = getAssociatedTokenAddressSync(mindId, wallet.publicKey);
     const tokenRecord = PublicKey.findProgramAddressSync(
     [
         Buffer.from('metadata'),
@@ -100,7 +117,7 @@ export const List = async (mindId, wallet, metaplex, list_price) => {
 
     const [sellerTradeState, tradeBump] = getAuctionHouseTradeState(
         auctionHouse.address,
-        wallet.publicKey.value,
+        wallet.publicKey,
         ata,
         NATIVE_MINT,
         mindId,
@@ -110,7 +127,7 @@ export const List = async (mindId, wallet, metaplex, list_price) => {
 
     const [freeTradeState, freeTradeBump] = await getAuctionHouseTradeState(
         auctionHouse.address,
-        wallet.publicKey.value,
+        wallet.publicKey,
         ata,
         NATIVE_MINT,
         mindId,
@@ -132,7 +149,7 @@ export const List = async (mindId, wallet, metaplex, list_price) => {
     )
 
     const accounts = {
-        wallet: wallet.publicKey.value,
+        wallet: wallet.publicKey,
         tokenAccount: ata,
         metadata: metadata,
         authority: auctionHouse.authorityAddress,
@@ -182,7 +199,7 @@ export const Bid = async (mindId, wallet, metaplex, seller, bid_price) => {
         [
             Buffer.from('auction_house'),
             (await auctionHouse).address.toBuffer(),
-            wallet.publicKey.value.toBuffer(),
+            wallet.publicKey.toBuffer(),
         ],
         new PublicKey(PROGRAM_ADDRESS)
     )
@@ -190,7 +207,7 @@ export const Bid = async (mindId, wallet, metaplex, seller, bid_price) => {
     const buyerTradeState = PublicKey.findProgramAddressSync(
         [	
             Buffer.from('auction_house'), 
-            wallet.publicKey.value.toBuffer(), 
+            wallet.publicKey.toBuffer(), 
             (await auctionHouse).address.toBuffer(), 
             associatedAddress.toBuffer(), 
             NATIVE_MINT.toBuffer(), 
@@ -200,11 +217,12 @@ export const Bid = async (mindId, wallet, metaplex, seller, bid_price) => {
         ],
         new PublicKey(PROGRAM_ADDRESS)
     )
+
     const bid_ix = createBuyInstruction(
     {
-        wallet: wallet.publicKey.value,
-        paymentAccount: wallet.publicKey.value,
-        transferAuthority: wallet.publicKey.value,
+        wallet: wallet.publicKey,
+        paymentAccount: wallet.publicKey,
+        transferAuthority: wallet.publicKey,
         treasuryMint: NATIVE_MINT,
         tokenAccount: associatedAddress,
         metadata: metadata,
@@ -403,11 +421,123 @@ export const Sell = async (mindId, wallet, metaplex, bid_price, buyer) => {
     // sell at a bid price ,list at bid price and execute
     const list_ix = await List(mindId, wallet, metaplex, bid_price)
 
-    const execute_ix = await Execute(mindId, wallet, metaplex, wallet.publicKey.value, bid_price, buyer)
+    const execute_ix = await Execute(mindId, wallet, metaplex, wallet.publicKey, bid_price, buyer)
 
     const txs = [list_ix, execute_ix]
 
     return txs
+}
+
+export const cancel_list = async (mindId, wallet, metaplex, list_receipt) => {
+     
+    const auctionHouse = await metaplex
+    .auctionHouse()
+    .findByAddress({ address: Auction_House });
+
+    const ata = getAssociatedTokenAddressSync(mindId, wallet.publicKey);
+    
+    const listing = await metaplex.auctionHouse().findListingByReceipt({
+      auctionHouse: auctionHouse,
+      receiptAddress: list_receipt
+    });
+
+    const tokenRecord = PublicKey.findProgramAddressSync(
+        [
+            Buffer.from('metadata'),
+            TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+            mindId.toBuffer(),
+            Buffer.from('token_record'),
+            ata.toBuffer(),
+        ],
+        TOKEN_METADATA_PROGRAM_ID
+    )[0];
+
+    const masterEdition = PublicKey.findProgramAddressSync(
+        [
+            Buffer.from('metadata'),
+            TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+            mindId.toBuffer(),
+            Buffer.from('edition'),
+        ],
+        TOKEN_METADATA_PROGRAM_ID
+    )[0];
+
+    const dr = PublicKey.findProgramAddressSync(
+        [
+            Buffer.from('metadata'),
+            TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+            mindId.toBuffer(),
+            Buffer.from('delegate_record'),
+            ata.toBuffer(),
+        ],
+        TOKEN_METADATA_PROGRAM_ID
+    )[0];
+
+    const metadata = PublicKey.findProgramAddressSync(
+        [
+            Buffer.from('metadata'),
+            TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+            mindId.toBuffer(),
+        ],
+        TOKEN_METADATA_PROGRAM_ID
+    )[0];
+
+    const remain_ix = createCancelRemainingAccountsInstruction(
+        {
+            metadataProgram: TOKEN_METADATA_PROGRAM_ID,
+            delegateRecord: dr,
+            programAsSigner: signer,
+            metadata: metadata,
+            edition: masterEdition,
+            tokenRecord: tokenRecord,
+            tokenMint: mindId,
+            authRulesProgram: TOKEN_AUTH_RULES_ID,
+            authRules: AUTH_RULES,
+            sysvarInstructions: SYSVAR_INSTRUCTIONS_PUBKEY
+        }
+    )
+
+    const cancelListing_ix = metaplex
+      .auctionHouse().builders().cancelListing({
+          auctionHouse: auctionHouse,
+          listing: listing,        
+      });
+    for (const i of remain_ix.keys) {
+      cancelListingtx.records[0].instruction.keys.push(i)
+    }
+    cancelListingtx.records[0].instruction.keys[2].isWritable = true
+
+    return cancelListing_ix
+
+}
+
+export const cancel_bid = async (mindId, metaplex) => {
+
+    const [metadata,metadata_bump] = PublicKey.findProgramAddressSync(
+        [
+            Buffer.from('metadata'),
+            TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+            mindId.toBuffer(),
+        ],
+        TOKEN_METADATA_PROGRAM_ID,
+    );
+
+    const auctionHouse = await metaplex
+    .auctionHouse()
+    .findByAddress({ address: Auction_House });
+
+    const bid = await metaplex
+    .auctionHouse()
+    .findBids({ auctionHouse, metadata });
+
+    const cancelbid_ix = await metaplex               
+    .auctionHouse().builders()
+    .cancelBid({
+        auctionHouse,
+        bid: bid,
+    });
+
+    return cancelbid_ix
 }
 
 export const Print_list_receipt = async (mindId, wallet, metaplex, list_price) => {
@@ -416,11 +546,11 @@ export const Print_list_receipt = async (mindId, wallet, metaplex, list_price) =
     .auctionHouse()
     .findByAddress({ address: Auction_House });
 
-    const ata = getAssociatedTokenAddressSync(mindId, wallet.publicKey.value);
+    const ata = getAssociatedTokenAddressSync(mindId, wallet.publicKey);
 
     const [sellerTradeState, tradeBump] = getAuctionHouseTradeState(
         auctionHouse.address,
-        wallet.publicKey.value,
+        wallet.publicKey,
         ata,
         NATIVE_MINT,
         mindId,
@@ -434,12 +564,12 @@ export const Print_list_receipt = async (mindId, wallet, metaplex, list_price) =
             sellerTradeState.toBuffer()
         ], 
         new PublicKey(PROGRAM_ADDRESS)
-        );
+    );
 
     const receipt_ix = createPrintListingReceiptInstruction(
         {
             receipt: receipt,
-            bookkeeper: wallet.publicKey.value,
+            bookkeeper: wallet.publicKey,
             instruction: SYSVAR_INSTRUCTIONS_PUBKEY, 
         },
         {
@@ -448,4 +578,193 @@ export const Print_list_receipt = async (mindId, wallet, metaplex, list_price) =
     )
 
     return receipt_ix
+}
+
+export const Print_bid_receipt = async (mindId, wallet, metaplex, bid_price) => {
+    
+    const auctionHouse = await metaplex
+    .auctionHouse()
+    .findByAddress({ address: Auction_House });
+
+    const ata = getAssociatedTokenAddressSync(mindId, wallet.publicKey);
+
+    const [buyerTradeState, tradeBump] = PublicKey.findProgramAddressSync(
+        [	
+            Buffer.from('auction_house'), 
+            wallet.publicKey.toBuffer(), 
+            (await auctionHouse).address.toBuffer(), 
+            ata.toBuffer(), 
+            NATIVE_MINT.toBuffer(), 
+            mindId.toBuffer(), 
+            new BN(bid_price).toArrayLike(Buffer, "le", 8), 
+            new BN(1).toArrayLike(Buffer, "le", 8),
+        ],
+        new PublicKey(PROGRAM_ADDRESS)
+    )
+
+    const [receipt, receiptBump] = PublicKey.findProgramAddressSync(
+        [
+            Buffer.from('bid_receipt'), 
+            buyerTradeState.toBuffer()
+        ], 
+        new PublicKey(PROGRAM_ADDRESS)
+    );
+
+    const bid_ix = createPrintBidReceiptInstruction(
+        {
+            receipt: receipt,
+            bookkeeper: wallet.publicKey,
+            instruction: SYSVAR_INSTRUCTIONS_PUBKEY,
+        },
+        {
+            receiptBump: receiptBump
+        }
+    )
+
+    return bid_ix
+}
+
+export const Print_purchase_receipt = async (mindId, wallet, metaplex, list_price, bid_price) => {
+
+    const auctionHouse = await metaplex
+    .auctionHouse()
+    .findByAddress({ address: Auction_House });
+    const ata = getAssociatedTokenAddressSync(mindId, wallet.publicKey);
+
+    const [sellerTradeState, sellertradeBump] = getAuctionHouseTradeState(
+        auctionHouse.address,
+        wallet.publicKey,
+        ata,
+        NATIVE_MINT,
+        mindId,
+        1,
+        list_price,
+    );
+    const [buyerTradeState, buyertradeBump] = PublicKey.findProgramAddressSync(
+        [	
+            Buffer.from('auction_house'), 
+            wallet.publicKey.toBuffer(), 
+            (await auctionHouse).address.toBuffer(), 
+            ata.toBuffer(), 
+            NATIVE_MINT.toBuffer(), 
+            mindId.toBuffer(), 
+            new BN(bid_price).toArrayLike(Buffer, "le", 8), 
+            new BN(1).toArrayLike(Buffer, "le", 8),
+        ],
+        new PublicKey(PROGRAM_ADDRESS)
+    )
+
+    const [purchasereceipt, purchasereceiptBump] = PublicKey.findProgramAddressSync(
+        [
+            Buffer.from('purchase_receipt'), 
+            sellerTradeState.toBuffer(),
+            buyerTradeState.toBuffer()
+        ], 
+        new PublicKey(PROGRAM_ADDRESS)
+    );
+
+    const [listreceipt, listreceiptBump] = PublicKey.findProgramAddressSync(
+        [
+            Buffer.from('listing_receipt'), 
+            sellerTradeState.toBuffer()
+        ], 
+        new PublicKey(PROGRAM_ADDRESS)
+    );
+
+    const [bidreceipt, bidreceiptBump] = PublicKey.findProgramAddressSync(
+        [
+            Buffer.from('bid_receipt'), 
+            buyerTradeState.toBuffer()
+        ], 
+        new PublicKey(PROGRAM_ADDRESS)
+    );
+
+    const purchase_ix = createPrintPurchaseReceiptInstruction(
+        {
+            purchaseReceipt: purchasereceipt,
+            listingReceipt: listreceipt,
+            bidReceipt: bidreceipt,
+            bookkeeper: wallet.publicKey,
+            instruction: SYSVAR_INSTRUCTIONS_PUBKEY
+        },
+        {
+            purchaseReceiptBump: purchasereceiptBump
+        }
+    )
+
+    return purchase_ix
+}
+
+export const Cancel_bid_receipt = async (mindId, wallet, metaplex, bid_price) => {
+
+    const auctionHouse = await metaplex
+    .auctionHouse()
+    .findByAddress({ address: Auction_House });
+    const ata = getAssociatedTokenAddressSync(mindId, wallet.publicKey);
+
+    const [buyerTradeState, tradeBump] = PublicKey.findProgramAddressSync(
+        [	
+            Buffer.from('auction_house'), 
+            wallet.publicKey.toBuffer(), 
+            (await auctionHouse).address.toBuffer(), 
+            ata.toBuffer(), 
+            NATIVE_MINT.toBuffer(), 
+            mindId.toBuffer(), 
+            new BN(bid_price).toArrayLike(Buffer, "le", 8), 
+            new BN(1).toArrayLike(Buffer, "le", 8),
+        ],
+        new PublicKey(PROGRAM_ADDRESS)
+    )
+
+    const [receipt, receiptBump] = PublicKey.findProgramAddressSync(
+        [
+            Buffer.from('bid_receipt'), 
+            buyerTradeState.toBuffer()
+        ], 
+        new PublicKey(PROGRAM_ADDRESS)
+    );
+
+    const cancelbidreceipt_ix = createCancelBidReceiptInstruction(
+        {
+            receipt: receipt,
+            instruction: SYSVAR_INSTRUCTIONS_PUBKEY,
+        }
+    )
+
+    return cancelbidreceipt_ix
+}
+
+export const Cancel_listing_receipt = async (mindId, wallet, metaplex, list_price) => {
+
+    const auctionHouse = await metaplex
+    .auctionHouse()
+    .findByAddress({ address: Auction_House });
+    const ata = getAssociatedTokenAddressSync(mindId, wallet.publicKey);
+
+    const [sellerTradeState, tradeBump] = getAuctionHouseTradeState(
+        auctionHouse.address,
+        wallet.publicKey,
+        ata,
+        NATIVE_MINT,
+        mindId,
+        1,
+        list_price,
+    );
+
+    const [receipt, receiptBump] = PublicKey.findProgramAddressSync(
+        [
+            Buffer.from('listing_receipt'), 
+            sellerTradeState.toBuffer()
+        ], 
+        new PublicKey(PROGRAM_ADDRESS)
+    );
+
+    const cancellistreceipt_ix = createCancelListingReceiptInstruction(
+        {
+            receipt: receipt,
+            instruction: SYSVAR_INSTRUCTIONS_PUBKEY
+        }
+    )
+
+    return cancellistreceipt_ix
 }
