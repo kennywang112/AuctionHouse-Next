@@ -11,7 +11,6 @@ import {
 } from '@solana/web3.js';
 import { 
   createSellRemainingAccountsInstruction, 
-  PROGRAM_ADDRESS, 
   createExecuteSaleRemainingAccountsInstruction, 
   createSellInstruction, 
   createCancelRemainingAccountsInstruction, 
@@ -21,8 +20,9 @@ import {
   createPrintListingReceiptInstruction,
   createPrintPurchaseReceiptInstruction,
   createCancelBidReceiptInstruction,
-  createCancelListingReceiptInstruction
-  } from "@metaplex-foundation/mpl-auction-house";
+  createCancelListingReceiptInstruction,
+  PROGRAM_ADDRESS
+} from "@metaplex-foundation/mpl-auction-house";
 import bs58 from "bs58";
 import { getAssociatedTokenAddressSync, getAccount ,getMint, NATIVE_MINT } from "@solana/spl-token";
 import { BN } from "@project-serum/anchor"
@@ -62,7 +62,7 @@ function getAuctionHouseTradeState(
 }
 
 export const List = async (mindId, wallet, metaplex, list_price) => {
-    
+
     const auctionHouse = await metaplex
     .auctionHouse()
     .findByAddress({ address: Auction_House });
@@ -492,7 +492,7 @@ export const cancel_list = async (mindId, wallet, metaplex, list_receipt) => {
 
 }
 
-export const cancel_bid = async (mindId, metaplex) => {
+export const cancel_bid = async (mindId, metaplex, buyer) => {
 
     const auctionHouse = await metaplex
     .auctionHouse()
@@ -509,13 +509,13 @@ export const cancel_bid = async (mindId, metaplex) => {
 
     const bid = await metaplex
     .auctionHouse()
-    .findBids({ auctionHouse, metadata });
+    .findBids({ auctionHouse, buyer, metadata });
 
     const cancelbid_ix = await metaplex               
     .auctionHouse().builders()
     .cancelBid({
-        auctionHouse,
-        bid: bid,
+        auctionHouse: auctionHouse,
+        bid: bid[0],
     });
 
     return cancelbid_ix

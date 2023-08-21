@@ -30,10 +30,12 @@ export const Full_function = ({ onClusterChange }) => {
 
     let TOKEN_METADATA_PROGRAM_ID = new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s')
     let mintid = new PublicKey('9ZJKSGLMLoAkLX8zb4AA3yFfK2EGNb64UTX9qXEVVkMY')
-    let seller = new PublicKey('2JeNLSrJkSaWoFoSQkb1YsxC1dXSaA1LTLjpakzb9SBf')
-    let buyer = new PublicKey('Se9gzT3Ep3E452LPyYaWKYqcCvsAwtHhRQwQvmoXFxG')
+    let seller = new PublicKey('Se9gzT3Ep3E452LPyYaWKYqcCvsAwtHhRQwQvmoXFxG')
+    let buyer = new PublicKey('2JeNLSrJkSaWoFoSQkb1YsxC1dXSaA1LTLjpakzb9SBf')
+
     let listprice = 0.2*1000000000
     let bidprice = 0.2*1000000000
+
     let bs = bs58.decode("Bhao6w2hvn5LtBgJ6nAno3qTy6WMyn59k7sdbFdJVsRapumSJfF86hZ1wcWJ6SxuEhuJUwC2DoNu5YTA9DyMFSy");
     let ah_auth_wallet = Keypair.fromSecretKey(bs);
 
@@ -92,7 +94,7 @@ export const Full_function = ({ onClusterChange }) => {
         tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash
 
         console.log(tx)
-        metaplex.rpc().sendAndConfirmTransaction(tx, {skipPreflight:false}, [metaplex.identity().publicKey])
+        metaplex.rpc().sendAndConfirmTransaction(tx, {skipPreflight:false}, [ah_auth_wallet])
     }
     const doCancellist = async () => {
 
@@ -124,10 +126,16 @@ export const Full_function = ({ onClusterChange }) => {
         console.log(cancel_tx)
         console.log(cancellistreceipt_ix)
     }
-
-
     const doCancelbid = async () => {
-        const ix = await cancel_bid(mintid, metaplex)
+        const ix = await cancel_bid(mintid, metaplex, seller)
+
+        let tx = new Transaction();
+        tx.add(ix)
+        tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash
+
+        metaplex.rpc().sendAndConfirmTransaction(tx, {skipPreflight:false}, [metaplex.identity()])
+
+        console.log(ix)
     }
     const find_escrow = async ()=> {
 
@@ -161,6 +169,7 @@ export const Full_function = ({ onClusterChange }) => {
                     <button onClick={doBuy}>buy</button>
                     <button onClick={doSell}>sell</button>
                     <button onClick={doCancellist}>cancel list</button>
+                    <button onClick={doCancelbid}>cancel bid</button>
                     <button onClick={find_escrow}>escrow</button>
 
                 </div>
